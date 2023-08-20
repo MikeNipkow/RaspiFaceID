@@ -35,7 +35,7 @@ You can run this script inside a docker container. Therefore you will have to cl
  ```git clone https://github.com/MikeNipkow/RaspiFaceID.git```
 
 After that you can build the docker image with the included dockerfile:
- ```sudo docker build -t raspiFaceID .```
+ ```sudo docker build -t raspifaceid .```
 
 Run the container with:
- ```sudo docker run -d -v ${PWD}:. raspiFaceID```
+ ```sudo docker run -d -v ${PWD}:. raspifaceid```
