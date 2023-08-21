@@ -1,5 +1,7 @@
 FROM python:3
 
+ENV TZ=Europe/Berlin
+
 WORKDIR /usr/src/app
 
 RUN apt-get -y update

@@ -27,6 +27,9 @@ The images will be stored inside the ``/data/images`` folder, which will also be
 - macOS or Linux (Windows is also supported, but you will need to install ``cmake`` and ``dlib`` correctly)
 - Optional: RaspberryPi with pigpio installed
 
+### Windows
+Make sure to install Visual Studio for C++ first.
+
 ### Run
 To start the script simply use ``python main.py``. Make sure that you have installed all dependencies before via ``pip install <Module>`` or ``pip install --no-cache-dir -r requirements.txt``.
 
