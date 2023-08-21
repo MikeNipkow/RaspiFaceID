@@ -76,9 +76,6 @@ class FaceRecognizer:
                 if not authorized:
                     self.face_handler.frame_face(frame_bgr, False, self.config.settings_unknown_name(), left, top, right, bottom)
 
-            cv2.imshow("Test", frame_bgr)
-            cv2.waitKey(1)
-
             # Check if toggling is allowed
             if Timer.is_toggling_allowed(self.config.settings_allow_toggle_from(),
                                          self.config.settings_allow_toogle_to()):
