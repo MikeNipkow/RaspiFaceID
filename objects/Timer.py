@@ -8,7 +8,9 @@ class Timer:
         self.expiration_time = datetime.now()
 
     def start(self, seconds):
-        self.expiration_time = datetime.now() + timedelta(0, seconds=seconds)
+        new_expiration_time = datetime.now() + timedelta(0, seconds=seconds)
+        if new_expiration_time > self.expiration_time:
+            self.expiration_time = new_expiration_time
 
     def stop(self):
         self.expiration_time = datetime.now()
