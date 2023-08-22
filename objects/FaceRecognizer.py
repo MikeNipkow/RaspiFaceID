@@ -15,7 +15,7 @@ class FaceRecognizer:
         self.pi = pi
         self.face_handler = face_handler
 
-        self.thread = Thread(target=self.__check_image())
+        self.thread = Thread(target=self.__check_image)
         self.thread.daemon = True
         self.thread.start()
 

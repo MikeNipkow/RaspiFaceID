@@ -31,7 +31,7 @@ class Camera:
                 self.connect()
                 time.sleep(5)
 
-            if self.capture is not None:
+            if self.is_connected():
                 ret = self.capture.grab()
 
     def is_connected(self):
@@ -41,7 +41,7 @@ class Camera:
     def connect(self):
         logging.info(f"Trying to connect to video stream: {self.stream_link}")
         try:
-            self.capture = cv2.VideoCapture(int(self.stream_link))
+            self.capture = cv2.VideoCapture(int(self.stream_link) + cv2.CAP_DSHOW)
         except ValueError:
             self.capture = cv2.VideoCapture(self.stream_link)
 
@@ -51,6 +51,7 @@ class Camera:
             self.connected = True
         else:
             logging.warning("Failed to connect to the video stream.")
+            self.connected = False
 
     def disconnect(self):
         if self.is_connected():

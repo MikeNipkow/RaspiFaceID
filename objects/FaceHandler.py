@@ -13,6 +13,10 @@ def convert_string_to_path(raw_string):
     return os.path.normpath(raw_string)
 
 
+def print_capture_info(name):
+    logging.info("Person found: " + name)
+
+
 class FaceHandler:
     root_path: str = "data"
     image_path: str = "data/images"
@@ -88,11 +92,7 @@ class FaceHandler:
         font = cv2.FONT_HERSHEY_DUPLEX
         cv2.putText(frame, name, (left + 6, bottom - 6), font, 1.0, (255, 255, 255), 1)
 
-        self.print_capture_info(name)
-
-    # Info if person was detected
-    def print_capture_info(self, name):
-        logging.info("Person found: " + name)
+        print_capture_info(name)
 
     # Save frame.
     def save_frame(self, img, person_name: str = ""):
@@ -117,6 +117,57 @@ class FaceHandler:
                      "Could not save the image of the authorized person.")
 
         self.cleanup_history()
+
+    def get_history_images(self, reverse: bool = True):
+        # Create folders if they do not exist
+        if not os.path.isdir(self.root_path):
+            os.mkdir(self.root_path)
+        if not os.path.isdir(self.history_path):
+            os.mkdir(self.history_path)
+
+        list_of_files = sorted(filter(os.path.isfile, glob.glob(self.history_path + "/*.png")), reverse=reverse)
+        return list_of_files
+
+    def get_history(self):
+        history = []
+        images = self.get_history_images()
+        i = -1
+        for file_name in images:
+            i += 1
+
+            assert isinstance(file_name, str)
+            split = file_name.split("_")
+
+            if len(split) != 3:
+                logging.warning(f"Failed to split history image into details: {file_name}")
+                continue
+
+            split_date = split[0].split(".")
+            year = split_date[0][-4:]
+            month = split_date[1]
+            day = split_date[2]
+
+            split_time = split[1].split(".")
+            hour = split_time[0]
+            minute = split_time[1]
+            second = split_time[2]
+
+            name = split[2].replace(".png", "")
+
+            history.append({
+                "endpoint": f"/history/{i}",
+                "name": name,
+                "timestamp": {
+                    "year": year,
+                    "month": month,
+                    "day": day,
+                    "hour": hour,
+                    "minute": minute,
+                    "second": second
+                }
+            })
+
+        return history
 
     def cleanup_history(self):
         max_images = 100
