@@ -31,7 +31,6 @@ face_recognizer = FaceRecognizer(config, camera, pi, face_handler)
 app = Flask(__name__)
 CORS(app)
 
-
 @app.route("/")
 def home():
     print("Received")
@@ -63,7 +62,9 @@ def history_image(image_id: str):
     return send_file(os.path.normpath(images[int(image_id)]), "image/png")
 
 
-app.run(debug=False)
+if __name__ == "__main__":
+    from waitress import serve
+    serve(app, host="0.0.0.0", port=8080)
 
 while True:
     pass
