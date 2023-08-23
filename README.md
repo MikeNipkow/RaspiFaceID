@@ -41,4 +41,4 @@ After that you can build the docker image with the included dockerfile:
  ```sudo docker build -t raspifaceid .```
 
 Run the container with:
- ```sudo docker run -p 5000:5000 -v ${PWD}:/home/app/src raspifaceid```
+ ```sudo docker run -p 8080:8080 -v ${PWD}:/home/app/src raspifaceid```
