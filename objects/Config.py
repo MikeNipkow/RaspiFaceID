@@ -42,7 +42,7 @@ class Config:
     def settings_allow_toggle_from(self):
         return self.config.getint("Settings", "AllowToggleFrom")
 
-    def settings_allow_toogle_to(self):
+    def settings_allow_toggle_to(self):
         return self.config.getint("Settings", "AllowToggleTo")
 
 

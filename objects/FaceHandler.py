@@ -1,33 +1,23 @@
-import glob
 import logging
 import os.path
 from datetime import datetime
 
 import cv2
-import face_recognition
 
 from objects.AuthorizedPerson import AuthorizedPerson
 from objects.util.faceutils import find_faces
-from objects.util.fileutils import list_files
-
-
-def convert_string_to_path(raw_string):
-    return os.path.normpath(raw_string)
-
-
-def print_capture_info(name):
-    logging.info("Person found: " + name)
+from objects.util.fileutils import list_files, delete_file
+from objects.util.timeutils import datetime_to_string
 
 
 class FaceHandler:
     image_path: str = os.path.join("data", "images")
     history_path: str = os.path.join("data", "history")
+    max_history_images = 100
 
     # List of all authorized persons and their faces.
-    authorized_persons = []
-    temp_authorized_persons = []
+    authorized_persons: list[AuthorizedPerson] = []
     encoded_faces = []
-    temp_encoded_faces = []
 
     def setup_folders(self):
         os.makedirs(self.history_path)
@@ -36,6 +26,10 @@ class FaceHandler:
     def load_images(self):
         self.setup_folders()
         path = self.image_path
+
+        # Clear current authorized faces
+        self.authorized_persons.clear()
+        self.encoded_faces.clear()
 
         # Loop through every file in the folder.
         for file in list_files(path):
@@ -59,21 +53,13 @@ class FaceHandler:
                 name = file.split(".")[0].split("_")[0]
 
                 # Add person to the whitelist.
-                authorized_person = AuthorizedPerson(name, file, image, encoded_faces[0])
-                self.temp_authorized_persons.append(authorized_person)
-                self.temp_encoded_faces.append(encoded_faces[0])
+                authorized_person = AuthorizedPerson(name, file, file_path, image, encoded_faces[0])
+                self.authorized_persons.append(authorized_person)
+                self.encoded_faces.append(encoded_faces[0])
             else:
                 logging.warning(f"{amount} faces found in image {file} - Deleting...")
                 os.remove(file_path)
                 continue
-
-        # Move temp vars to live vars.
-        self.authorized_persons = self.temp_authorized_persons.copy()
-        self.encoded_faces = self.temp_encoded_faces.copy()
-
-        # Clear temporary vars.
-        self.temp_authorized_persons.clear()
-        self.temp_encoded_faces.clear()
 
         # Print authorized persons.
         # Check how many persons are authorized.
@@ -82,115 +68,67 @@ class FaceHandler:
 
         # Loop through every person to print information about them.
         for authorized_person in self.authorized_persons:
-            logging.info(" - " + authorized_person.name + ": " + authorized_person.image_path)
+            logging.info(" - " + authorized_person.name + ": " + authorized_person.file_path)
 
-    # Get certain authorized image
-    def get_authorized_image(self, name: str):
-        list_of_files = sorted(filter(os.path.isfile, glob.glob(self.image_path + "/" + name)))
-        return None if len(list_of_files) == 0 else list_of_files[0]
+    def get_authorized_person_image_file(self, file: str):
+        return os.path.join(self.image_path, file)
 
-    # Get authorized images
-    def get_authorized_images(self):
-        # Create folders if they do not exist
-        if not os.path.isdir(self.root_path):
-            os.mkdir(self.root_path)
-        if not os.path.isdir(self.history_path):
-            os.mkdir(self.history_path)
+    def get_history_image_file(self, file: str):
+        return os.path.join(self.history_path, file)
 
-        list_of_files = sorted(filter(os.path.isfile, glob.glob(self.image_path + "/*")))
-        return list_of_files
+    # Get authorized image files
+    def get_authorized_image_files(self):
+        return list_files(self.image_path)
 
-    # Get authorized persons.
-    def get_authorized_persons(self):
-        authorized = []
-        images = self.get_authorized_images()
+    # Get authorized image files
+    def get_history_image_files(self):
+        return list_files(self.history_path)
 
-        for file in images:
-            assert isinstance(file, str)
-            file_name = file.replace(os.path.dirname(file), "").replace("/", "").replace("\\", "")
-            file_name_no_ending = file_name.replace(".png", "").replace(".jpg", "")
+    def delete_authorized_person(self, image_name: str, reload: bool = True) -> bool:
+        self.setup_folders()
 
-            split = file_name_no_ending.split("_")
+        file = self.get_authorized_person_image_file(image_name)
+        result = delete_file(file)
 
-            name = split[0]
+        if reload:
+            self.load_images()
 
-            authorized.append({
-                "endpoint": f"/authorized/{file_name}",
-                "name": name,
-                "file": file_name
-            })
-
-        return authorized
-
-    def delete_authorized_person(self, image_name: str):
-        file = self.image_path + "/" + image_name
-        if os.path.exists(file) and os.path.isfile(file):
-            os.remove(file)
-            return True
-
-        return False
+        return result
 
     # Save frame.
-    def save_authorized_person(self, img, name):
-        # Dir path.
-        dir_path = self.image_path
+    def create_authorized_person(self, image, name: str, reload: bool = True) -> bool:
+        self.setup_folders()
 
-        # Create dir.
-        try:
-            os.mkdir(dir_path)
-        except FileExistsError:
-            pass
+        dt_string = datetime_to_string(datetime.now())
+        file_name = f"{name}_{dt_string}.png"
+        file = os.path.join(self.image_path, file_name)
 
-        current_datetime = datetime.now()
-        month = current_datetime.month if current_datetime.month >= 10 else f"0{current_datetime.month}"
-        day = current_datetime.day if current_datetime.day >= 10 else f"0{current_datetime.day}"
-        hour = current_datetime.hour if current_datetime.hour >= 10 else f"0{current_datetime.hour}"
-        minute = current_datetime.minute if current_datetime.minute >= 10 else f"0{current_datetime.minute}"
-        second = current_datetime.second if current_datetime.second >= 10 else f"0{current_datetime.second}"
-        date = "%s.%s.%s" % (current_datetime.year, month, day)
-        time = "%s.%s.%s" % (hour, minute, second)
-        filename = convert_string_to_path(dir_path + "/" + name + "_" + date + "_" + time + ".png")
-        result = cv2.imwrite(filename, img)
+        result = cv2.imwrite(file, image)
 
         # Log message.
         logging.info("Successfully added image of authorized person." if result else
                      "Could not save the image of the authorized person.")
 
+        if reload:
+            self.load_images()
+
         return result
 
-    # Frame face in image
-    @staticmethod
-    def frame_face(frame, verified, name, left, top, right, bottom):
-        color = (0, 255, 0) if verified else (0, 0, 255)
-        cv2.rectangle(frame, (left, top), (right, bottom), color, 2)
-        cv2.rectangle(frame, (left, bottom - 35), (right, bottom), color, cv2.FILLED)
-        font = cv2.FONT_HERSHEY_DUPLEX
-        cv2.putText(frame, name, (left + 6, bottom - 6), font, 1.0, (255, 255, 255), 1)
+    def delete_history_image(self, file_name: str) -> bool:
+        self.setup_folders()
 
-        print_capture_info(name)
+        file = self.get_history_image_file(file_name)
+        return delete_file(file)
 
     # Save frame.
-    def save_frame(self, img, person_name: str = ""):
-        # Dir path.
-        dir_path = self.history_path
+    def save_frame_in_history(self, image, person_name: str):
+        self.setup_folders()
 
-        # Create dir.
-        try:
-            os.mkdir(dir_path)
-        except FileExistsError:
-            pass
+        dt_string = datetime_to_string(datetime.now())
+        file_name = f"{dt_string}_{person_name}.png"
+        file = os.path.join(self.history_path, file_name)
 
-        current_datetime = datetime.now()
-        month = current_datetime.month if current_datetime.month >= 10 else f"0{current_datetime.month}"
-        day = current_datetime.day if current_datetime.day >= 10 else f"0{current_datetime.day}"
-        hour = current_datetime.hour if current_datetime.hour >= 10 else f"0{current_datetime.hour}"
-        minute = current_datetime.minute if current_datetime.minute >= 10 else f"0{current_datetime.minute}"
-        second = current_datetime.second if current_datetime.second >= 10 else f"0{current_datetime.second}"
-        date = "%s.%s.%s" % (current_datetime.year, month, day)
-        time = "%s.%s.%s" % (hour, minute, second)
-        filename = convert_string_to_path(dir_path + "/" + date + "_" + time +
-                                          ("_" + person_name if len(person_name) > 0 else "") + ".png")
-        result = cv2.imwrite(filename, img)
+        result = cv2.imwrite(file, image)
 
         # Log message.
         logging.info("Successfully saved image of authorized person." if result else
@@ -198,90 +136,22 @@ class FaceHandler:
 
         self.cleanup_history()
 
-    def get_history_images(self, reverse: bool = True):
-        # Create folders if they do not exist
-        if not os.path.isdir(self.root_path):
-            os.mkdir(self.root_path)
-        if not os.path.isdir(self.history_path):
-            os.mkdir(self.history_path)
-
-        list_of_files = sorted(filter(os.path.isfile, glob.glob(self.history_path + "/*.png")), reverse=reverse)
-        return list_of_files
-
-    def get_history_image(self, name: str):
-        list_of_files = sorted(filter(os.path.isfile, glob.glob(self.history_path + "/" + name)), reverse=True)
-        return None if len(list_of_files) == 0 else list_of_files[0]
-
-    def get_history(self):
-        history = []
-        images = self.get_history_images()
-
-        for file in images:
-            assert isinstance(file, str)
-            file_name = file.replace(os.path.dirname(file), "").replace("/", "").replace("\\", "")
-
-            split = file_name.split("_")
-
-            if len(split) != 3:
-                logging.warning(f"Failed to split history image into details: {file_name}")
-                continue
-
-            split_date = split[0].split(".")
-            year = split_date[0]
-            month = split_date[1]
-            day = split_date[2]
-
-            split_time = split[1].split(".")
-            hour = split_time[0]
-            minute = split_time[1]
-            second = split_time[2]
-
-            name = split[2].replace(".png", "")
-
-            history.append({
-                "endpoint": f"/history/{file_name}",
-                "name": name,
-                "timestamp": {
-                    "year": year,
-                    "month": month,
-                    "day": day,
-                    "hour": hour,
-                    "minute": minute,
-                    "second": second
-                }
-            })
-
-        return history
-
+    # Handle a maximum amount of images stored on the disk.
     def cleanup_history(self):
-        max_images = 100
+        self.setup_folders()
 
-        # Create folders if they do not exist
-        if not os.path.isdir(self.root_path):
-            os.mkdir(self.root_path)
-        if not os.path.isdir(self.history_path):
-            os.mkdir(self.history_path)
-
-        list_of_files = sorted(filter(os.path.isfile, glob.glob(self.history_path + "/*")))
-
-        if len(list_of_files) <= max_images:
+        image_files = self.get_history_image_files()
+        amount = len(image_files)
+        if amount <= self.max_history_images:
             return
 
-        to_delete = len(list_of_files) - max_images
+        to_delete = amount - self.max_history_images
         deleted = 0
 
-        for file_name in os.listdir(self.history_path):
+        for file_name in image_files:
             if deleted >= to_delete:
                 break
 
-            os.remove(self.history_path + "/" + file_name)
+            self.delete_history_image(file_name)
             logging.info("Deleted old history image: " + file_name)
             deleted += 1
-
-    # Get all face locations and encodings in a frame.
-    @staticmethod
-    def get_face_locations_and_encodings(frame):
-        face_locations = face_recognition.face_locations(frame)
-        face_encodings = face_recognition.face_encodings(frame, face_locations)
-
-        return face_locations, face_encodings

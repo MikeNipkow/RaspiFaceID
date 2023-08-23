@@ -23,7 +23,7 @@ class FaceRecognizer:
 
     def __check_image(self):
         while True:
-
+            # TODO: Log info after Framing face.
             frame_bgr = self.camera.read()
 
             if frame_bgr is None:
@@ -102,3 +102,5 @@ class FaceRecognizer:
 
         self.camera.disconnect()
         self.pi.switch_gpio(False)
+
+
