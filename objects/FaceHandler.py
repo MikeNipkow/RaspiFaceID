@@ -7,6 +7,8 @@ import cv2
 import face_recognition
 
 from objects.AuthorizedPerson import AuthorizedPerson
+from objects.util.faceutils import find_faces
+from objects.util.fileutils import list_files
 
 
 def convert_string_to_path(raw_string):
@@ -18,9 +20,8 @@ def print_capture_info(name):
 
 
 class FaceHandler:
-    root_path: str = "data"
-    image_path: str = "data/images"
-    history_path: str = "data/history"
+    image_path: str = os.path.join("data", "images")
+    history_path: str = os.path.join("data", "history")
 
     # List of all authorized persons and their faces.
     authorized_persons = []
@@ -28,50 +29,43 @@ class FaceHandler:
     encoded_faces = []
     temp_encoded_faces = []
 
+    def setup_folders(self):
+        os.makedirs(self.history_path)
+        os.makedirs(self.image_path)
+
     def load_images(self):
-        # Create folders if they do not exist
-        if not os.path.isdir(self.root_path):
-            os.mkdir(self.root_path)
-        if not os.path.isdir(self.image_path):
-            os.mkdir(self.image_path)
-        if not os.path.isdir(self.history_path):
-            os.mkdir(self.history_path)
+        self.setup_folders()
+        path = self.image_path
 
         # Loop through every file in the folder.
-        for file_name in os.listdir(self.image_path):
-            if " " in file_name:
-                logging.warning("Cannot load image with white-spaces: " + file_name)
+        for file in list_files(path):
+            file_path = os.path.join(path, file)
+
+            if " " in file:
+                logging.warning(f"Cannot load image with white-spaces: {file}")
                 continue
 
-            image = cv2.imread(self.image_path + "/" + file_name)
+            image = cv2.imread(file_path)
             if image is None:
+                logging.warning(f"Failed to read image file: {file}")
                 continue
-
-            # Get name of the person by filename.
-            split_file_name = file_name.split("_")
-            name = split_file_name[0] if len(split_file_name) > 1 \
-                else file_name.replace(".png", "").replace(".jpg", "")
 
             # Get faces out of the image.
-            face_locations = face_recognition.face_locations(image)
-            encoded_faces = face_recognition.face_encodings(image, face_locations)
+            face_locations, encoded_faces, amount = find_faces(image)
 
             # Handle amount of faces in the image.
-            if len(encoded_faces) <= 0:
-                logging.warning(f"No face found in image {file_name} - Deleting...")
-                os.remove(self.image_path + "/" + file_name)
-                continue
+            if amount == 0:
+                # Get name of the person by filename.
+                name = file.split(".")[0].split("_")[0]
 
-            elif len(encoded_faces) > 1:
-                logging.warning(f"More than one face found in {file_name} - Deleting...")
-                os.remove(self.image_path + "/" + file_name)
-                continue
-
-            else:
                 # Add person to the whitelist.
-                authorized_person = AuthorizedPerson(name, file_name, image, encoded_faces[0])
+                authorized_person = AuthorizedPerson(name, file, image, encoded_faces[0])
                 self.temp_authorized_persons.append(authorized_person)
                 self.temp_encoded_faces.append(encoded_faces[0])
+            else:
+                logging.warning(f"{amount} faces found in image {file} - Deleting...")
+                os.remove(file_path)
+                continue
 
         # Move temp vars to live vars.
         self.authorized_persons = self.temp_authorized_persons.copy()

@@ -1,6 +1,5 @@
 # This class is used to store the data of an authorized person.
 class AuthorizedPerson:
-
     # Data.
     name = None
     image_path = None
