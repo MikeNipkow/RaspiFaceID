@@ -10,6 +10,7 @@ class Camera:
     capture = None
 
     connected: bool = False
+    last_frame = None
 
     def __init__(self, stream_link):
         self.stream_link = stream_link
@@ -32,7 +33,11 @@ class Camera:
                 time.sleep(5)
 
             if self.is_connected():
-                ret = self.capture.grab()
+                success, frame = self.capture.read()
+                if success:
+                    self.last_frame = frame
+
+                cv2.waitKey(1)
 
     def is_connected(self):
         return self.capture is not None and self.capture.isOpened()
@@ -63,5 +68,4 @@ class Camera:
         if not self.is_connected():
             return None
 
-        success, frame = self.capture.retrieve()
-        return frame if success else None
+        return None if self.last_frame is None else self.last_frame.copy()

@@ -9,6 +9,8 @@ from objects.Timer import Timer
 
 
 class FaceRecognizer:
+    last_frame = None
+
     def __init__(self, config: Config, camera: Camera, pi: RaspberryPi, face_handler: FaceHandler):
         self.config = config
         self.camera = camera
@@ -23,8 +25,14 @@ class FaceRecognizer:
         while True:
 
             frame_bgr = self.camera.read()
+
             if frame_bgr is None:
                 continue
+
+            if self.last_frame is not None and (self.last_frame == frame_bgr).all():
+                continue
+
+            self.last_frame = frame_bgr
 
             # Convert BGR to RGB.
             frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
@@ -45,13 +53,17 @@ class FaceRecognizer:
             # Get name of authorized person
             person_name = ""
 
+            # Copy data to prevent thread problems
+            encoded_faces = self.face_handler.encoded_faces.copy()
+            authorized_persons = self.face_handler.authorized_persons.copy()
+
             # Loop through all the faces found in the current frame.
             for (top, right, bottom, left), face_encoding in zip(face_locations, face_encodings):
                 # Var to check if the person is authorized or not
                 authorized = False
 
                 # Compare face with the authorized faces.
-                matches = face_recognition.compare_faces(self.face_handler.encoded_faces, face_encoding,
+                matches = face_recognition.compare_faces(encoded_faces, face_encoding,
                                                          tolerance=self.config.face_recognition_tolerance())
 
                 # Check if a face matches.
@@ -61,7 +73,7 @@ class FaceRecognizer:
                         continue
 
                     # Get name.
-                    name = self.face_handler.authorized_persons[i].name
+                    name = authorized_persons[i].name
                     if len(person_name) <= 0:
                         person_name = name
 
@@ -74,7 +86,8 @@ class FaceRecognizer:
 
                 # Also frame face, if the person is unknown.
                 if not authorized:
-                    self.face_handler.frame_face(frame_bgr, False, self.config.settings_unknown_name(), left, top, right, bottom)
+                    self.face_handler.frame_face(frame_bgr, False, self.config.settings_unknown_name(), left, top,
+                                                 right, bottom)
 
             # Check if toggling is allowed
             if Timer.is_toggling_allowed(self.config.settings_allow_toggle_from(),
