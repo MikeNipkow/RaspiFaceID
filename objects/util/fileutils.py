@@ -7,8 +7,11 @@ def get_file(folder: str, file_name: str):
 
 
 def list_files(path: str):
-    return (file for file in os.listdir(path)
-            if os.path.isfile(os.path.join(path, file)))
+    gen = (file for file in os.listdir(path)
+           if os.path.isfile(os.path.join(path, file)))
+
+    # Error len() for type Generator
+    return list(gen)
 
 
 def delete_file(file) -> bool:
