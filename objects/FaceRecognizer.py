@@ -1,3 +1,4 @@
+import logging
 import time
 from threading import Thread
 
@@ -6,6 +7,7 @@ import face_recognition
 
 from objects import Config, Camera, RaspberryPi, FaceHandler
 from objects.Timer import Timer
+from objects.util.faceutils import find_faces, frame_face
 
 
 class FaceRecognizer:
@@ -23,12 +25,9 @@ class FaceRecognizer:
 
     def __check_image(self):
         while True:
-            # TODO: Log info after Framing face.
             frame_bgr = self.camera.read()
-
             if frame_bgr is None:
                 continue
-
             if self.last_frame is not None and (self.last_frame == frame_bgr).all():
                 continue
 
@@ -36,13 +35,12 @@ class FaceRecognizer:
 
             # Convert BGR to RGB.
             frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
-
             # Null check
             if frame_rgb is None:
                 continue
 
             # Get all faces in current frame.
-            face_locations, face_encodings = self.face_handler.get_face_locations_and_encodings(frame_rgb)
+            face_locations, face_encodings, amount = find_faces(frame_rgb)
 
             # Var to check if door will be opened by this frame.
             door_opened_before = self.pi.current_state
@@ -78,7 +76,8 @@ class FaceRecognizer:
                         person_name = name
 
                     # Draw a frame around the face.
-                    self.face_handler.frame_face(frame_bgr, True, name, left, top, right, bottom)
+                    frame_face(frame_bgr, True, name, left, top, right, bottom)
+                    logging.info(f"Found authorized person: {name}")
 
                     # End loop
                     authorized = True
@@ -86,12 +85,13 @@ class FaceRecognizer:
 
                 # Also frame face, if the person is unknown.
                 if not authorized:
-                    self.face_handler.frame_face(frame_bgr, False, self.config.settings_unknown_name(), left, top,
-                                                 right, bottom)
+                    name = self.config.settings_unknown_name()
+                    frame_face(frame_bgr, False, name, left, top, right, bottom)
+                    logging.info(f"Person found: {name}")
 
             # Check if toggling is allowed
             if Timer.is_toggling_allowed(self.config.settings_allow_toggle_from(),
-                                         self.config.settings_allow_toogle_to()):
+                                         self.config.settings_allow_toggle_to()):
                 # Open or close door
                 if any_authorized_face:
                     self.pi.switch_gpio(True, self.pi.duration)

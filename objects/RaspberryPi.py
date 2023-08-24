@@ -33,19 +33,29 @@ class RaspberryPi:
 
         self.connect()
 
-        self.thread = Thread(target=self.__check_timer)
-        self.thread.daemon = True
-        self.thread.start()
+        self.timer_thread = Thread(target=self.__check_timer)
+        self.timer_thread.daemon = True
+        self.timer_thread.start()
 
-    def __check_timer(self):
+        self.connection_thread = Thread(target=self.check_connection)
+        self.connection_thread.daemon = True
+        self.connection_thread.start()
+
+    def check_connection(self):
         while True:
             if not self.is_connected():
                 if self.connected:
                     logging.warning("Lost connection to RaspberryPi...")
                     self.connected = False
+                    self.pi.connected = False
 
                 self.connect()
-                time.sleep(60)
+
+            time.sleep(1)
+
+    def __check_timer(self):
+        while True:
+            if not self.connected:
                 continue
 
             if self.timer.is_expired() and self.current_state:
@@ -54,7 +64,14 @@ class RaspberryPi:
             time.sleep(0.1)
 
     def is_connected(self):
-        return False if self.pi is None else self.pi.connected
+        if self.pi is None or not self.pi.connected:
+            return False
+
+        try:
+            self.pi.read(self.gpio_id)
+            return True
+        except Exception as e:
+            return False
 
     def connect(self):
         # Connect to pi.

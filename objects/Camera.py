@@ -17,21 +17,30 @@ class Camera:
 
         self.connect()
 
-        self.thread = Thread(target=self.__reader)
-        self.thread.daemon = True
-        self.thread.start()
+        self.buffer_thread = Thread(target=self.__reader)
+        self.buffer_thread.daemon = True
+        self.buffer_thread.start()
 
-    # Grab frames as soon as they are available.
-    def __reader(self):
+        self.connection_thread = Thread(target=self.check_connection)
+        self.connection_thread.daemon = True
+        self.connection_thread.start()
+
+    # Handle connection.
+    def check_connection(self):
         while True:
             if not self.is_connected():
+                # Check last known state.
                 if self.connected:
                     logging.warning("Lost connecting to video stream...")
 
                 self.disconnect()
                 self.connect()
-                time.sleep(5)
 
+            time.sleep(5)
+
+    # Grab frames as soon as they are available.
+    def __reader(self):
+        while True:
             if self.is_connected():
                 success, frame = self.capture.read()
                 if success:

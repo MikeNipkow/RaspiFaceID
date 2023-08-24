@@ -6,7 +6,7 @@ import cv2
 
 from objects.AuthorizedPerson import AuthorizedPerson
 from objects.util.faceutils import find_faces
-from objects.util.fileutils import list_files, delete_file
+from objects.util.fileutils import list_files, delete_file, get_file
 from objects.util.timeutils import datetime_to_string
 
 
@@ -20,8 +20,8 @@ class FaceHandler:
     encoded_faces = []
 
     def setup_folders(self):
-        os.makedirs(self.history_path)
-        os.makedirs(self.image_path)
+        os.makedirs(self.history_path, exist_ok=True)
+        os.makedirs(self.image_path, exist_ok=True)
 
     def load_images(self):
         self.setup_folders()
@@ -48,7 +48,7 @@ class FaceHandler:
             face_locations, encoded_faces, amount = find_faces(image)
 
             # Handle amount of faces in the image.
-            if amount == 0:
+            if amount == 1:
                 # Get name of the person by filename.
                 name = file.split(".")[0].split("_")[0]
 
@@ -71,10 +71,10 @@ class FaceHandler:
             logging.info(" - " + authorized_person.name + ": " + authorized_person.file_path)
 
     def get_authorized_person_image_file(self, file: str):
-        return os.path.join(self.image_path, file)
+        return get_file(self.image_path, file)
 
     def get_history_image_file(self, file: str):
-        return os.path.join(self.history_path, file)
+        return get_file(self.history_path, file)
 
     # Get authorized image files
     def get_authorized_image_files(self):
@@ -88,6 +88,9 @@ class FaceHandler:
         self.setup_folders()
 
         file = self.get_authorized_person_image_file(image_name)
+        if file is None:
+            return False
+
         result = delete_file(file)
 
         if reload:
