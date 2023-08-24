@@ -81,6 +81,7 @@ class RaspberryPi:
         # Log if the connection was successful or not.
         if self.pi.connected:
             logging.info("Successfully connected to RaspberryPi.")
+            self.connected = True
         else:
             logging.warning("Failed to connect to RaspberryPi.")
 
