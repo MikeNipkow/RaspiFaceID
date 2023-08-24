@@ -1,5 +1,4 @@
 import logging
-import time
 from threading import Thread
 
 import cv2
@@ -12,6 +11,11 @@ from objects.util.faceutils import find_faces, frame_face
 
 class FaceRecognizer:
     last_frame = None
+
+    config: Config
+    camera: Camera
+    pi: RaspberryPi
+    face_handler: FaceHandler
 
     def __init__(self, config: Config, camera: Camera, pi: RaspberryPi, face_handler: FaceHandler):
         self.config = config
@@ -98,7 +102,7 @@ class FaceRecognizer:
 
                 # Save the image, if the door will be opened by this image.
                 if not door_opened_before and self.pi.current_state:
-                    self.face_handler.save_frame(frame_bgr, person_name)
+                    self.face_handler.save_frame_in_history(frame_bgr, person_name)
 
         self.camera.disconnect()
         self.pi.switch_gpio(False)
