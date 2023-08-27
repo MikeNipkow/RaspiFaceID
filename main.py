@@ -1,20 +1,16 @@
-import datetime
 import logging
-import os
 import time
 from threading import Thread
 
-import cv2
 import flask
-from flask import Flask, make_response, send_file
+from flask import Flask
+from flask_cors import CORS
 
 from objects.Camera import Camera
 from objects.Config import Config
 from objects.FaceHandler import FaceHandler
 from objects.FaceRecognizer import FaceRecognizer
 from objects.RaspberryPi import RaspberryPi
-from flask_cors import CORS
-
 from objects.api.ApiHandler import ApiHandler
 
 logging.basicConfig(

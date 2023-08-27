@@ -58,7 +58,7 @@ class FaceHandler:
                 self.encoded_faces.append(encoded_faces[0])
             else:
                 logging.warning(f"{amount} faces found in image {file} - Deleting...")
-                #os.remove(file_path)
+                os.remove(file_path)
                 continue
 
         # Print authorized persons.
