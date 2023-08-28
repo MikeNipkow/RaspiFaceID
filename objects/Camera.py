@@ -45,6 +45,9 @@ class Camera:
                 success, frame = self.capture.read()
                 if success:
                     self.last_frame = frame
+                else:
+                    logging.warning("Failed to read image. Disconnecting...")
+                    self.disconnect()
 
                 cv2.waitKey(1)
 
