@@ -42,7 +42,19 @@ class Config:
     def settings_allow_toggle_from(self):
         return self.config.getint("Settings", "AllowToggleFrom")
 
+    def set_settings_allow_toggle_from(self, toggle_from: int):
+        if 0 > toggle_from > 24:
+            return False
+        self.config.set("Settings", "AllowToggleFrom", str(toggle_from))
+        return True
+
     def settings_allow_toggle_to(self):
         return self.config.getint("Settings", "AllowToggleTo")
+
+    def set_settings_allow_toggle_to(self, toggle_to: int):
+        if 0 > toggle_to > 24:
+            return False
+        self.config.set("Settings", "AllowToggleTo", str(toggle_to))
+        return True
 
 

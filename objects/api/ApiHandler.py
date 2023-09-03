@@ -6,6 +6,7 @@ from objects.Camera import Camera
 from objects.Config import Config
 from objects.FaceHandler import FaceHandler
 from objects.RaspberryPi import RaspberryPi
+from objects.util.faceutils import find_faces
 
 
 class ApiHandler:
@@ -30,9 +31,53 @@ class ApiHandler:
                 "connected": self.pi.is_connected(),
                 "ip_address": self.pi.ip_address,
                 "gpio_id": self.pi.gpio_id,
-                "gpio_state": self.pi.current_state
+                "gpio_state": self.pi.current_state,
+                "toggle_from": self.config.settings_allow_toggle_from(),
+                "toggle_to": self.config.settings_allow_toggle_to()
             }
         }, 200
+
+    def set_gpio_state(self, state: bool, duration: str):
+        if state and not duration.isdecimal():
+            return "Invalid argument.", 400
+
+        duration_number = float(duration)
+        if state and duration_number < 1:
+            return "Duration to low.", 400
+
+        success = self.pi.switch_gpio(state, duration_number)
+        if success:
+            return "Success", 200
+        else:
+            return "Failed to toggle gpio.", 503
+
+    def set_toggle_from(self, toggle_from: str):
+        if toggle_from is None or not toggle_from.isdigit():
+            return "Invalid argument.", 400
+
+        toggle_from_number: int = int(toggle_from)
+        if 0 > toggle_from_number > 24:
+            return "Argument must be between 0 and 24.", 400
+
+        success = self.config.set_settings_allow_toggle_from(toggle_from_number)
+        if success:
+            return "Success.", 200
+        else:
+            return "Failed to save.", 503
+
+    def set_toggle_to(self, toggle_to: str):
+        if toggle_to is None or not toggle_to.isdigit():
+            return "Invalid argument.", 400
+
+        toggle_to_number: int = int(toggle_to)
+        if 0 > toggle_to_number > 24:
+            return "Argument must be between 0 and 24.", 400
+
+        success = self.config.set_settings_allow_toggle_to(toggle_to_number)
+        if success:
+            return "Success.", 200
+        else:
+            return "Failed to save.", 503
 
     def get_image(self, image):
         if image is None:
@@ -62,6 +107,12 @@ class ApiHandler:
         image = self.camera.read()
         if image is None or not self.camera.is_connected():
             return "Camera error.", 503
+
+        face_locations, face_encodings, amount = find_faces(image)
+        if amount <= 1:
+            return "No faces found.", 500
+        elif amount >= 1:
+            return "More than one face found.", 500
 
         result = self.face_handler.create_authorized_person(image, name)
         if result:

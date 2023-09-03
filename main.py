@@ -45,6 +45,26 @@ def history():
     return api_handler.get_history()
 
 
+@app.route("/toggle/gpio/on/<arg>", methods=["POST"])
+def toggle_gpio_on(arg: str):
+    return api_handler.set_gpio_state(True, arg)
+
+
+@app.route("/toggle/gpio/off", methods=["POST"])
+def toggle_gpio_off():
+    return api_handler.set_gpio_state(False, "1")
+
+
+@app.route("/toggle/from/<arg>", methods=["POST"])
+def toggle_from(arg: str):
+    return api_handler.set_toggle_from(arg)
+
+
+@app.route("/toggle/to/<arg>")
+def toggle_to(arg: str):
+    return api_handler.set_toggle_from(arg)
+
+
 @app.route("/history/<arg>", methods=["GET", "DELETE"])
 def history_image(arg: str):
     if flask.request.method == "DELETE":

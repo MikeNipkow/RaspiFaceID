@@ -109,3 +109,5 @@ class RaspberryPi:
 
         self.pi.write(self.gpio_id, state if not self.invert_output else not state)
         self.current_state = state
+
+        return True
